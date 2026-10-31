@@ -57,6 +57,10 @@
         <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
         <span>Home</span>
       </button>
+      <button onclick="switchTab('plan')" id="nav-plan" class="py-2.5 flex flex-col items-center space-y-1 hover:text-slate-200">
+        <i data-lucide="pie-chart" class="w-5 h-5"></i>
+        <span>Plan</span>
+      </button>
       <button onclick="switchTab('debts')" id="nav-debts" class="py-2.5 flex flex-col items-center space-y-1 hover:text-slate-200">
         <i data-lucide="flame" class="w-5 h-5"></i>
         <span>Payoff</span>
@@ -64,10 +68,6 @@
       <button onclick="switchTab('payday')" id="nav-payday" class="py-2.5 flex flex-col items-center space-y-1 hover:text-slate-200">
         <i data-lucide="banknote" class="w-5 h-5"></i>
         <span>Payday</span>
-      </button>
-      <button onclick="switchTab('savings')" id="nav-savings" class="py-2.5 flex flex-col items-center space-y-1 hover:text-slate-200">
-        <i data-lucide="shield-alert" class="w-5 h-5"></i>
-        <span>Savings</span>
       </button>
       <button onclick="switchTab('transactions')" id="nav-transactions" class="py-2.5 flex flex-col items-center space-y-1 hover:text-slate-200">
         <i data-lucide="receipt" class="w-5 h-5"></i>
@@ -132,6 +132,56 @@
           Save Transaction
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- CSV Statement Importer Modal (S3 / R21) -->
+  <div id="csv-import-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-amber-400"></i>
+            <span>Import Bank Statement CSV</span>
+          </h3>
+          <p class="text-[11px] text-slate-400">Paste bank CSV text or upload an export file</p>
+        </div>
+        <button onclick="closeCsvModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-semibold text-slate-300">Statement CSV Data</label>
+          <button onclick="loadSampleCsv()" class="text-[10px] text-amber-400 hover:underline font-semibold flex items-center space-x-1">
+            <i data-lucide="sparkles" class="w-3 h-3"></i>
+            <span>Load Sample Bank CSV</span>
+          </button>
+        </div>
+
+        <textarea id="csv-raw-input" rows="5" placeholder="Date,Description,Amount,Method&#10;2026-11-02,KFC Manor Park,3450.00,Debit/Cash&#10;2026-11-03,Hi-Lo Food Stores,14200.00,Credit Card&#10;2026-11-04,JPS Bill Payment,12000.00,Bank Transfer" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:border-amber-400 focus:outline-none"></textarea>
+
+        <div class="flex items-center justify-between">
+          <input type="file" id="csv-file-input" accept=".csv,.txt" onchange="handleCsvFile(event)" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700" />
+          <button onclick="parseAndPreviewCsv()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-transform active:scale-95">
+            Preview & Match Rules
+          </button>
+        </div>
+
+        <!-- CSV Preview Container -->
+        <div id="csv-preview-area" class="hidden space-y-3 pt-2 border-t border-slate-800">
+          <div class="flex justify-between items-center text-xs">
+            <span class="font-bold text-white" id="csv-matched-count">0 Transactions Parsed</span>
+            <span class="text-amber-400 text-[11px]" id="csv-sum-amount">Total: J$0.00</span>
+          </div>
+          <div id="csv-preview-list" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+          
+          <button onclick="commitCsvImport()" id="csv-commit-btn" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg transition-transform active:scale-95">
+            Import All Verified Transactions
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -239,15 +289,24 @@
       merchantRules: [
         { keyword: "kfc", category: "Eating Out / Takeout" },
         { keyword: "wendy", category: "Eating Out / Takeout" },
+        { keyword: "burger king", category: "Eating Out / Takeout" },
         { keyword: "pricesmart", category: "Groceries" },
+        { keyword: "hi-lo", category: "Groceries" },
         { keyword: "hi lo", category: "Groceries" },
+        { keyword: "losusan", category: "Groceries" },
+        { keyword: "sovereign", category: "Groceries" },
         { keyword: "etag", category: "Fuel / Transportation" },
         { keyword: "unipet", category: "Fuel / Transportation" },
         { keyword: "fesco", category: "Fuel / Transportation" },
+        { keyword: "rubis", category: "Fuel / Transportation" },
+        { keyword: "total", category: "Fuel / Transportation" },
         { keyword: "spotify", category: "Music Subscription" },
+        { keyword: "netflix", category: "Streaming Service" },
         { keyword: "jps", category: "Electricity (JPS)" },
-        { keyword: "lime", category: "Mobile" },
-        { keyword: "columbus", category: "Internet" }
+        { keyword: "nwc", category: "Water (NWC)" },
+        { keyword: "flow", category: "Internet" },
+        { keyword: "digicel", category: "Mobile" },
+        { keyword: "lime", category: "Mobile" }
       ],
       transactions: []
     };
@@ -267,19 +326,19 @@
 
     // --- 2. CALCULATION ENGINE (R1–R25) ---
     const ClearTrackEngine = {
-      // R1: Next Payday calculation
+      // R1: Next Payday
       getNextPayday(asOfDateStr, usualDay = 28) {
         const asOf = new Date(asOfDateStr);
         let year = asOf.getFullYear();
-        let month = asOf.getMonth(); // 0-based
+        let month = asOf.getMonth();
 
         function getPaydayForMonth(y, m) {
           const lastDay = new Date(y, m + 1, 0).getDate();
           const targetDay = Math.min(usualDay, lastDay);
           const candidate = new Date(y, m, targetDay);
-          const dayOfWeek = candidate.getDay(); // 0 = Sun, 6 = Sat
-          if (dayOfWeek === 6) candidate.setDate(candidate.getDate() - 1); // Friday
-          if (dayOfWeek === 0) candidate.setDate(candidate.getDate() - 2); // Friday
+          const dayOfWeek = candidate.getDay();
+          if (dayOfWeek === 6) candidate.setDate(candidate.getDate() - 1);
+          if (dayOfWeek === 0) candidate.setDate(candidate.getDate() - 2);
           return candidate;
         }
 
@@ -290,11 +349,10 @@
         return p1.toISOString().split("T")[0];
       },
 
-      // R1b: Payday after next
       getPaydayAfterNext(nextPaydayStr, usualDay = 28) {
         const d = new Date(nextPaydayStr);
         let y = d.getFullYear();
-        let m = d.getMonth() + 1; // next calendar month
+        let m = d.getMonth() + 1;
         if (m > 11) { y++; m = 0; }
         const lastDay = new Date(y, m + 1, 0).getDate();
         const targetDay = Math.min(usualDay, lastDay);
@@ -305,7 +363,6 @@
         return candidate.toISOString().split("T")[0];
       },
 
-      // R2: Flow Type
       getFlowType(categoryName) {
         if (categoryName === "Net Pay") return "Income";
         if (categoryName.includes("Payment")) return "Debt Payment";
@@ -314,7 +371,6 @@
         return "Expense";
       },
 
-      // R3: Cash on Hand (Live)
       getLiveCash(state) {
         const asOf = state.settings.cashAsOfDate;
         let cash = state.settings.cashOnHand;
@@ -328,7 +384,6 @@
         return Math.max(0, cash);
       },
 
-      // R4: Live Card Balance
       getLiveCardBalance(state) {
         const card = state.debts.find(d => d.isRevolving);
         if (!card) return 0;
@@ -344,56 +399,45 @@
         return balance;
       },
 
-      // R5: Net Pay Received this cycle
       getNetPayReceived(state) {
-        // Oct pay landed Oct 28. Cash on hand is as of Oct 29.
-        // If cashAsOfDate is on or after the most recent payday, it's already counted.
-        return 0; // Exactly 0 in benchmark
+        return 0;
       },
 
-      // R6: Total Available on Payday
       getTotalAvailable(state) {
         return this.getNetPayReceived(state) + 0 + this.getLiveCash(state);
       },
 
-      // R7: Budget still to spend this cycle
       getBudgetStillToSpend(state) {
-        // Excludes Debt payments and Outside savings
         const livingPlusFlex = state.categories
           .filter(c => ["Living", "Flexible", "Subscription", "Utility", "Sinking Fund"].includes(c.type))
           .reduce((sum, c) => sum + c.monthlyBudget, 0);
-        return livingPlusFlex; // In benchmark = 122563.43
+        return livingPlusFlex;
       },
 
-      // R8: Take-home Debt Payments still due
       getTakeHomeDebtPayments(state) {
         return state.debts
           .filter(d => d.paymentSource === "Take-home")
           .reduce((sum, d) => sum + d.requiredPayment, 0);
       },
 
-      // R9: One-off Bills due before payday
       getBillsBeforePayday(state, nextPaydayStr) {
         return state.bills
           .filter(b => !b.paid && b.dueDate <= nextPaydayStr)
           .reduce((sum, b) => sum + b.amount, 0);
       },
 
-      // R10: Safe Extra Payment
       getSafeExtraPayment(state) {
         const nextPayday = this.getNextPayday(state.today, state.settings.usualPayday);
         const R6 = this.getTotalAvailable(state);
         const R7 = this.getBudgetStillToSpend(state);
         const R8 = this.getTakeHomeDebtPayments(state);
         const R9 = this.getBillsBeforePayday(state, nextPayday);
-        const savingsPerPeriod = state.settings.monthlyOutsideSavings; // Monthly = 1 period
+        const savingsPerPeriod = state.settings.monthlyOutsideSavings;
         const buffer = state.settings.cashBufferTarget;
-
         const commitments = R7 + R8 + R9 + savingsPerPeriod;
         return Math.max(0, R6 - commitments - buffer);
       },
 
-      // R11: Safe to Spend
       getSafeToSpend(state) {
         const nextPayday = this.getNextPayday(state.today, state.settings.usualPayday);
         const R6 = this.getTotalAvailable(state);
@@ -401,11 +445,9 @@
         const R9 = this.getBillsBeforePayday(state, nextPayday);
         const savings = state.settings.monthlyOutsideSavings;
         const buffer = state.settings.cashBufferTarget;
-
         return Math.max(0, R6 - (R8 + R9 + savings + buffer));
       },
 
-      // R13: Card ceiling status
       getCardCeilingStatus(state) {
         const balance = this.getLiveCardBalance(state);
         const hard = state.settings.cardHardCeiling;
@@ -422,14 +464,10 @@
         return { used, room, status, balance };
       },
 
-      // R14: Priority & Actions
       getSortedDebts(debts, method = "Avalanche") {
         const copy = debts.map(d => ({ ...d }));
-        if (method === "Avalanche") {
-          copy.sort((a, b) => b.apr - a.apr);
-        } else {
-          copy.sort((a, b) => a.balance - b.balance);
-        }
+        if (method === "Avalanche") copy.sort((a, b) => b.apr - a.apr);
+        else copy.sort((a, b) => a.balance - b.balance);
         return copy.map((d, index) => {
           let action = "NEXT";
           if (index === 0) action = "ATTACK FIRST";
@@ -438,7 +476,6 @@
         });
       },
 
-      // R17: 96-Month Avalanche Engine
       runPayoffSimulation(debts, monthlyExtra = 15000, maxMonths = 96) {
         let currentDebts = debts.map(d => ({
           name: d.name,
@@ -448,7 +485,6 @@
         }));
 
         currentDebts.sort((a, b) => b.apr - a.apr);
-
         let totalInterestPaid = 0;
         let months = 0;
 
@@ -459,22 +495,18 @@
           months++;
           let extraPool = monthlyExtra;
 
-          // 1. Calculate interest and take required payments
           currentDebts.forEach(d => {
             if (d.balance > 0) {
               const interest = (d.balance * d.apr) / 12;
               totalInterestPaid += interest;
               d.balance += interest;
-
               const req = Math.min(d.requiredPayment, d.balance);
               d.balance -= req;
             } else {
-              // Rollover snowball
               extraPool += d.requiredPayment;
             }
           });
 
-          // 2. Cascade extra pool in priority order
           for (let d of currentDebts) {
             if (d.balance > 0 && extraPool > 0) {
               const pay = Math.min(extraPool, d.balance);
@@ -484,8 +516,7 @@
           }
         }
 
-        // Project debt-free date from 2026-11-01
-        const start = new Date(2026, 10, 1); // 1 Nov 2026
+        const start = new Date(2026, 10, 1);
         start.setMonth(start.getMonth() + months);
         const y = start.getFullYear();
         const m = String(start.getMonth() + 1).padStart(2, "0");
@@ -494,11 +525,10 @@
         return { months, debtFreeDate, totalInterestPaid };
       },
 
-      // R19: Term loan progress (Wheels Express)
       getWheelsLoanProgress(loan, todayStr) {
         const today = new Date(todayStr);
         const start = new Date(loan.startDate);
-        const monthsElapsed = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth()); // 23
+        const monthsElapsed = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
         const r = loan.apr / 12;
         const n = loan.termMonths;
         const pmt = (loan.originalAmount * r) / (1 - Math.pow(1 + r, -n));
@@ -508,18 +538,16 @@
         return { scheduledBalance, ahead, pace: ahead >= -pmt / 2 ? "ON TRACK" : "BEHIND" };
       },
 
-      // R22 & R23: Savings Calculations
       getSavingsMetrics(state) {
         const total = state.savingsAccounts.reduce((sum, a) => sum + a.balance, 0);
         const accessible = state.savingsAccounts.filter(a => a.accessible).reduce((sum, a) => sum + a.balance, 0);
-        const monthlySaved = 42199.43; // Spec T22
+        const monthlySaved = 42199.43;
         return { total, accessible, monthlySaved };
       },
 
-      // R25: Save-or-Pay Split
       getSaveOrPayRecommendation(state) {
         const accessible = this.getSavingsMetrics(state).accessible;
-        const essentialOutgo = 72000 + this.getTakeHomeDebtPayments(state); // 103247.64
+        const essentialOutgo = 72000 + this.getTakeHomeDebtPayments(state);
         const monthsCovered = accessible / essentialOutgo;
         const shortfall = Math.max(0, 1.0 * essentialOutgo - accessible);
         const safeExtra = this.getSafeExtraPayment(state);
@@ -534,6 +562,18 @@
           toDebt,
           sentence: `Move J$${Math.round(toSavings).toLocaleString()} to Rainy Day Funds to reach 1 month of cover, and put J$${Math.round(toDebt).toLocaleString()} on Mastercard Gold.`
         };
+      },
+
+      // R20: Monthly Plan Actuals aggregator
+      getCategoryActuals(state) {
+        const actualMap = {};
+        state.categories.forEach(c => actualMap[c.name] = 0);
+        state.transactions.forEach(t => {
+          if (actualMap[t.category] !== undefined) {
+            actualMap[t.category] += t.amount;
+          }
+        });
+        return actualMap;
       }
     };
 
@@ -561,9 +601,9 @@
     function render() {
       const container = document.getElementById("app-view");
       if (currentTab === "home") container.innerHTML = renderHome();
+      else if (currentTab === "plan") container.innerHTML = renderMonthlyPlan();
       else if (currentTab === "debts") container.innerHTML = renderDebts();
       else if (currentTab === "payday") container.innerHTML = renderPayday();
-      else if (currentTab === "savings") container.innerHTML = renderSavings();
       else if (currentTab === "transactions") container.innerHTML = renderTransactions();
       else if (currentTab === "tests") container.innerHTML = renderTests();
       lucide.createIcons();
@@ -575,7 +615,6 @@
       const safeSpend = ClearTrackEngine.getSafeToSpend(state);
       const safeExtra = ClearTrackEngine.getSafeExtraPayment(state);
       const cardGuard = ClearTrackEngine.getCardCeilingStatus(state);
-      const nextPayday = ClearTrackEngine.getNextPayday(state.today, state.settings.usualPayday);
       const debts = ClearTrackEngine.getSortedDebts(state.debts, state.settings.payoffMethod);
       const payoff = ClearTrackEngine.runPayoffSimulation(state.debts, state.settings.monthlyExtraPayment);
       const savePay = ClearTrackEngine.getSaveOrPayRecommendation(state);
@@ -645,7 +684,7 @@
           </div>
         </div>
 
-        <!-- Debt Overview & Priority Snapshot -->
+        <!-- Debts in Avalanche Order -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between pb-2 border-b border-slate-800">
             <div>
@@ -695,9 +734,92 @@
       `;
     }
 
+    // --- SCREEN S4: MONTHLY PLAN (BUDGET VS ACTUAL) ---
+    function renderMonthlyPlan() {
+      const actuals = ClearTrackEngine.getCategoryActuals(state);
+      
+      const totalBudget = state.categories
+        .filter(c => c.type !== "Income")
+        .reduce((sum, c) => sum + c.monthlyBudget, 0);
+
+      const totalActual = Object.entries(actuals)
+        .filter(([catName]) => {
+          const cat = state.categories.find(c => c.name === catName);
+          return cat && cat.type !== "Income";
+        })
+        .reduce((sum, [, amt]) => sum + amt, 0);
+
+      const groups = ["Living", "Flexible", "Utility", "Subscription", "Sinking Fund", "Debt", "Savings"];
+
+      return `
+        <div class="space-y-4">
+          <!-- Summary Header -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-sm font-bold text-white">Monthly Plan (November 2026)</h2>
+                <p class="text-[10px] text-slate-400">Budget vs. Actual Spending</p>
+              </div>
+              <span class="text-xs font-bold text-amber-400">${fmtInt(totalBudget)} Budgeted</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 text-[10px] block">Actual Spent</span>
+                <strong class="text-white text-base font-extrabold">${fmtInt(totalActual)}</strong>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 text-[10px] block">Remaining Cushion</span>
+                <strong class="text-emerald-400 text-base font-extrabold">${fmtInt(Math.max(0, totalBudget - totalActual))}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Groups -->
+          ${groups.map(group => {
+            const cats = state.categories.filter(c => c.type === group || (group === "Debt" && c.type.startsWith("Debt")));
+            if (!cats.length) return '';
+            
+            const groupBudget = cats.reduce((s, c) => s + c.monthlyBudget, 0);
+            const groupActual = cats.reduce((s, c) => s + (actuals[c.name] || 0), 0);
+
+            return `
+              <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                  <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">${group}</span>
+                  <span class="text-[11px] text-slate-400">${fmtInt(groupActual)} / ${fmtInt(groupBudget)}</span>
+                </div>
+
+                <div class="space-y-2.5">
+                  ${cats.map(c => {
+                    const spent = actuals[c.name] || 0;
+                    const pct = c.monthlyBudget > 0 ? (spent / c.monthlyBudget) * 100 : 0;
+                    const over = spent > c.monthlyBudget;
+
+                    return `
+                      <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                          <span class="font-medium text-slate-200">${c.name}</span>
+                          <span class="font-mono ${over ? 'text-rose-400 font-bold' : 'text-slate-300'}">
+                            ${fmtInt(spent)} <span class="text-slate-500">/ ${fmtInt(c.monthlyBudget)}</span>
+                          </span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                          <div class="h-full rounded-full ${over ? 'bg-rose-500' : pct > 80 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${Math.min(100, pct)}%"></div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
     // --- SCREEN S5 & S6: DEBTS & SENSITIVITY ---
     function renderDebts() {
-      const debts = ClearTrackEngine.getSortedDebts(state.debts, state.settings.payoffMethod);
       const basePayoff = ClearTrackEngine.runPayoffSimulation(state.debts, state.settings.monthlyExtraPayment);
       const wheelsProgress = ClearTrackEngine.getWheelsLoanProgress(state.debts[2], state.today);
 
@@ -851,67 +973,33 @@
       render();
     }
 
-    // --- SCREEN S11: SAVINGS & EMERGENCY COVERAGE ---
-    function renderSavings() {
-      const metrics = ClearTrackEngine.getSavingsMetrics(state);
-      const savePay = ClearTrackEngine.getSaveOrPayRecommendation(state);
-
-      return `
-        <div class="space-y-4">
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <h3 class="text-xs font-bold text-white">Savings Accounts</h3>
-              <span class="text-xs text-amber-400 font-bold">Accessible: ${fmt(metrics.accessible)}</span>
-            </div>
-            <div class="space-y-2">
-              ${state.savingsAccounts.map(a => `
-                <div class="flex justify-between items-center p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
-                  <div>
-                    <span class="text-xs font-bold text-white block">${a.name}</span>
-                    <span class="text-[10px] ${a.accessible ? 'text-emerald-400' : 'text-slate-500'}">
-                      ${a.accessible ? '✓ Accessible Liquid' : '🔒 Held as Loan Security'}
-                    </span>
-                  </div>
-                  <strong class="text-xs text-slate-200">${fmt(a.balance)}</strong>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-
-          <!-- Emergency Cover Gauge (R25) -->
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-white">Emergency Runway</span>
-              <span class="text-xs font-black text-rose-400">${savePay.monthsCovered.toFixed(2)} Months</span>
-            </div>
-            <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
-              <div class="bg-amber-500 h-full rounded-full" style="width: ${Math.min(100, savePay.monthsCovered * 100)}%"></div>
-            </div>
-            <p class="text-[11px] text-slate-400 leading-relaxed">
-              Minimum guideline is 1.0 month before sending all surplus at debt. Shortfall to reach 1 month: <strong class="text-amber-400">${fmt(savePay.shortfall)}</strong>.
-            </p>
-          </div>
-        </div>
-      `;
-    }
-
-    // --- SCREEN S3: TRANSACTIONS LOG ---
+    // --- SCREEN S3: TRANSACTIONS & CSV STATEMENT IMPORT TRIGGER ---
     function renderTransactions() {
       return `
         <div class="space-y-3">
           <div class="flex justify-between items-center">
-            <h2 class="text-base font-bold text-white">Spending Log</h2>
-            <button onclick="openQuickAdd()" class="text-xs font-bold bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl">
-              + Add
-            </button>
+            <h2 class="text-base font-bold text-white">Transactions</h2>
+            <div class="flex items-center space-x-2">
+              <button onclick="openCsvModal()" class="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-xl flex items-center space-x-1">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                <span>Import CSV</span>
+              </button>
+              <button onclick="openQuickAdd()" class="text-xs font-bold bg-amber-500 text-slate-950 px-3 py-1.5 rounded-xl">
+                + Add
+              </button>
+            </div>
           </div>
 
           <div class="space-y-2">
             ${state.transactions.length === 0 ? `
               <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl text-center space-y-2">
                 <i data-lucide="receipt" class="w-8 h-8 text-slate-600 mx-auto"></i>
-                <p class="text-xs text-slate-400">No new transactions logged yet for November.</p>
-                <button onclick="openQuickAdd()" class="text-xs text-amber-400 font-bold underline">Tap to log your first purchase</button>
+                <p class="text-xs text-slate-400">No transactions logged yet.</p>
+                <div class="flex justify-center space-x-3 pt-2">
+                  <button onclick="openCsvModal()" class="text-xs text-amber-400 font-bold underline">Import Bank CSV</button>
+                  <span class="text-slate-600">•</span>
+                  <button onclick="openQuickAdd()" class="text-xs text-amber-400 font-bold underline">Log Manually</button>
+                </div>
               </div>
             ` : state.transactions.map((t, idx) => `
               <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
@@ -932,7 +1020,7 @@
       `;
     }
 
-    // --- SCREEN: AUTOMATED VERIFICATION SUITE (Tests T1–T27) ---
+    // --- SCREEN: AUTOMATED VERIFICATION SUITE (T1–T27) ---
     function renderTests() {
       const tests = [
         { id: "T1", rule: "R1", name: "Next Payday", expected: "2026-11-27", actual: ClearTrackEngine.getNextPayday("2026-10-31", 28) },
@@ -1053,6 +1141,128 @@
       state.transactions.splice(idx, 1);
       saveState();
       render();
+    }
+
+    // --- CSV IMPORTER ENGINE (R21) ---
+    let parsedCsvRows = [];
+
+    function openCsvModal() {
+      document.getElementById("csv-import-modal").classList.remove("hidden");
+    }
+
+    function closeCsvModal() {
+      document.getElementById("csv-import-modal").classList.add("hidden");
+      parsedCsvRows = [];
+      document.getElementById("csv-preview-area").classList.add("hidden");
+    }
+
+    function loadSampleCsv() {
+      const sample = 
+`Date,Description,Amount,Method
+2026-11-02,KFC Manor Park,3450.00,Debit/Cash
+2026-11-03,Hi-Lo Food Stores,14200.00,Credit Card
+2026-11-04,JPS Bill Payment,12000.00,Bank Transfer
+2026-11-05,Rubis Toll Gate Fuel,6000.00,Credit Card
+2026-11-06,Spotify Monthly,2000.00,Credit Card`;
+      document.getElementById("csv-raw-input").value = sample;
+    }
+
+    function handleCsvFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        document.getElementById("csv-raw-input").value = event.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    function parseAndPreviewCsv() {
+      const raw = document.getElementById("csv-raw-input").value.trim();
+      if (!raw) return alert("Please paste or upload CSV data first.");
+
+      const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+      parsedCsvRows = [];
+
+      lines.forEach((line, index) => {
+        // Skip header if line contains words like date or description
+        if (index === 0 && line.toLowerCase().includes("date") && line.toLowerCase().includes("description")) return;
+
+        const parts = line.split(",").map(p => p.trim().replace(/^["']|["']$/g, ""));
+        if (parts.length >= 3) {
+          const date = parts[0];
+          const desc = parts[1];
+          const amt = Math.abs(parseFloat(parts[2].replace(/[^0-9.-]/g, "")));
+          const method = parts[3] || "Debit/Cash";
+
+          // Match category from rules
+          let category = "Flexible";
+          const lower = desc.toLowerCase();
+          const match = state.merchantRules.find(r => lower.includes(r.keyword.toLowerCase()));
+          if (match) category = match.category;
+          else {
+            // Default based on generic keywords
+            if (lower.includes("supermarket") || lower.includes("mart")) category = "Groceries";
+            else if (lower.includes("gas") || lower.includes("petro")) category = "Fuel / Transportation";
+            else category = "Flexible";
+          }
+
+          if (!isNaN(amt)) {
+            parsedCsvRows.push({ date, description: desc, amount: amt, paymentMethod: method, category });
+          }
+        }
+      });
+
+      if (!parsedCsvRows.length) return alert("Could not parse any valid transaction rows. Check format.");
+
+      // Render Preview
+      const listContainer = document.getElementById("csv-preview-list");
+      listContainer.innerHTML = parsedCsvRows.map((r, i) => `
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+          <div class="flex justify-between items-center font-bold">
+            <span class="text-white">${r.description}</span>
+            <span class="text-amber-400">${fmt(r.amount)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[10px]">
+            <span class="text-slate-400">${r.date} • ${r.paymentMethod}</span>
+            <select onchange="updateCsvRowCategory(${i}, this.value)" class="bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 text-[10px]">
+              ${state.categories.map(c => `
+                <option value="${c.name}" ${c.name === r.category ? 'selected' : ''}>${c.name}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+      `).join('');
+
+      const totalSum = parsedCsvRows.reduce((s, r) => s + r.amount, 0);
+      document.getElementById("csv-matched-count").innerText = `${parsedCsvRows.length} Rows Ready to Import`;
+      document.getElementById("csv-sum-amount").innerText = `Total: ${fmt(totalSum)}`;
+      document.getElementById("csv-preview-area").classList.remove("hidden");
+    }
+
+    function updateCsvRowCategory(idx, newCat) {
+      parsedCsvRows[idx].category = newCat;
+    }
+
+    function commitCsvImport() {
+      if (!parsedCsvRows.length) return;
+      
+      parsedCsvRows.forEach(r => {
+        state.transactions.unshift({
+          id: "tx_" + Math.random().toString(36).substr(2, 9),
+          amount: r.amount,
+          description: r.description,
+          paymentMethod: r.paymentMethod,
+          date: r.date,
+          category: r.category,
+          essential: true
+        });
+      });
+
+      saveState();
+      closeCsvModal();
+      render();
+      alert(`Successfully imported ${parsedCsvRows.length} transactions! Live Cash, Balances, and Monthly Plan have updated.`);
     }
 
     // Initialize App
