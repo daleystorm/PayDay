@@ -187,7 +187,7 @@
 
   <!-- APPLICATION ENGINE JAVASCRIPT -->
   <script>
-    // --- 1. DEFAULT DATASET (Snapshot 31 Oct 2026 as per Spec Section 5) ---
+    // --- 1. DEFAULT DATASET (Snapshot 31 Oct 2026) ---
     const INITIAL_STATE = {
       today: "2026-10-31",
       settings: {
@@ -283,7 +283,7 @@
       savingsAccounts: [
         { name: "Rainy Day Funds (Scotia 0102)", balance: 47184.33, accessible: true },
         { name: "CU Ordinary Deposits", balance: 7996.11, accessible: true },
-        { name: "CU Regular Shares", balance: 163358.33, accessible: false }, // Held as loan security
+        { name: "CU Regular Shares", balance: 163358.33, accessible: false },
         { name: "First Global Bank Savings", balance: 18258.61, accessible: true }
       ],
       merchantRules: [
@@ -291,15 +291,20 @@
         { keyword: "wendy", category: "Eating Out / Takeout" },
         { keyword: "burger king", category: "Eating Out / Takeout" },
         { keyword: "pricesmart", category: "Groceries" },
+        { keyword: "hilo", category: "Groceries" },
         { keyword: "hi-lo", category: "Groceries" },
         { keyword: "hi lo", category: "Groceries" },
         { keyword: "losusan", category: "Groceries" },
         { keyword: "sovereign", category: "Groceries" },
+        { keyword: "supermarket", category: "Groceries" },
         { keyword: "etag", category: "Fuel / Transportation" },
         { keyword: "unipet", category: "Fuel / Transportation" },
         { keyword: "fesco", category: "Fuel / Transportation" },
         { keyword: "rubis", category: "Fuel / Transportation" },
         { keyword: "total", category: "Fuel / Transportation" },
+        { keyword: "texaco", category: "Fuel / Transportation" },
+        { keyword: "fuel", category: "Fuel / Transportation" },
+        { keyword: "gas", category: "Fuel / Transportation" },
         { keyword: "spotify", category: "Music Subscription" },
         { keyword: "netflix", category: "Streaming Service" },
         { keyword: "jps", category: "Electricity (JPS)" },
@@ -311,11 +316,24 @@
       transactions: []
     };
 
-    // --- State Storage ---
+    // --- State Storage & Smart Migration ---
     let state = JSON.parse(localStorage.getItem("cleartrack_data")) || INITIAL_STATE;
+    
+    // Automatically merge any missing default merchant rules into existing state
+    if (state.merchantRules) {
+      INITIAL_STATE.merchantRules.forEach(rule => {
+        const cleanK = rule.keyword.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!state.merchantRules.some(r => r.keyword.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanK)) {
+          state.merchantRules.push(rule);
+        }
+      });
+      saveState();
+    }
+
     function saveState() {
       localStorage.setItem("cleartrack_data", JSON.stringify(state));
     }
+    
     function resetToSpecDefaults() {
       if (confirm("Reset ClearTrack to the October 31, 2026 benchmark state?")) {
         state = JSON.parse(JSON.stringify(INITIAL_STATE));
@@ -324,9 +342,31 @@
       }
     }
 
+    // --- SMART MERCHANT CATEGORIZER (R21) ---
+    function findCategoryForMerchant(desc) {
+      if (!desc) return "Groceries";
+      const cleanDesc = desc.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      // 1. Exact or Substring match against merchant rules
+      for (const rule of state.merchantRules) {
+        const cleanK = rule.keyword.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (cleanK && cleanDesc.includes(cleanK)) {
+          return rule.category;
+        }
+      }
+
+      // 2. Intelligent Keyword Fallbacks
+      if (cleanDesc.includes("supermarket") || cleanDesc.includes("grocer") || cleanDesc.includes("food")) return "Groceries";
+      if (cleanDesc.includes("gas") || cleanDesc.includes("fuel") || cleanDesc.includes("toll") || cleanDesc.includes("petro")) return "Fuel / Transportation";
+      if (cleanDesc.includes("pharmacy") || cleanDesc.includes("health") || cleanDesc.includes("dr") || cleanDesc.includes("hospital")) return "Medical";
+      if (cleanDesc.includes("burger") || cleanDesc.includes("pizza") || cleanDesc.includes("cafe") || cleanDesc.includes("rest") || cleanDesc.includes("food")) return "Eating Out / Takeout";
+
+      // 3. Fallback to valid everyday expense (NEVER "Net Pay")
+      return "Groceries";
+    }
+
     // --- 2. CALCULATION ENGINE (R1–R25) ---
     const ClearTrackEngine = {
-      // R1: Next Payday
       getNextPayday(asOfDateStr, usualDay = 28) {
         const asOf = new Date(asOfDateStr);
         let year = asOf.getFullYear();
@@ -564,7 +604,6 @@
         };
       },
 
-      // R20: Monthly Plan Actuals aggregator
       getCategoryActuals(state) {
         const actualMap = {};
         state.categories.forEach(c => actualMap[c.name] = 0);
@@ -620,7 +659,6 @@
       const savePay = ClearTrackEngine.getSaveOrPayRecommendation(state);
 
       return `
-        <!-- High-Impact Money Guidance -->
         <div class="bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border-l-4 border-amber-500 p-3.5 rounded-r-xl">
           <p class="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-1.5">
             <i data-lucide="compass" class="w-3.5 h-3.5"></i>
@@ -631,7 +669,6 @@
           </p>
         </div>
 
-        <!-- 3 Primary Live Money Metrics -->
         <div class="grid grid-cols-2 gap-3">
           <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl">
             <div class="flex items-center justify-between text-slate-400 mb-1">
@@ -652,7 +689,6 @@
           </div>
         </div>
 
-        <!-- Credit Card Guardrail Card (R13) -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
@@ -684,7 +720,6 @@
           </div>
         </div>
 
-        <!-- Debts in Avalanche Order -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between pb-2 border-b border-slate-800">
             <div>
@@ -715,7 +750,6 @@
           </div>
         </div>
 
-        <!-- Payoff Forecast & Motivation Milestone -->
         <div class="bg-gradient-to-br from-slate-900 to-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-white flex items-center space-x-1.5">
@@ -734,7 +768,7 @@
       `;
     }
 
-    // --- SCREEN S4: MONTHLY PLAN (BUDGET VS ACTUAL) ---
+    // --- SCREEN S4: MONTHLY PLAN ---
     function renderMonthlyPlan() {
       const actuals = ClearTrackEngine.getCategoryActuals(state);
       
@@ -753,7 +787,6 @@
 
       return `
         <div class="space-y-4">
-          <!-- Summary Header -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div class="flex justify-between items-center">
               <div>
@@ -775,7 +808,6 @@
             </div>
           </div>
 
-          <!-- Category Groups -->
           ${groups.map(group => {
             const cats = state.categories.filter(c => c.type === group || (group === "Debt" && c.type.startsWith("Debt")));
             if (!cats.length) return '';
@@ -840,7 +872,6 @@
             </div>
           </div>
 
-          <!-- Term Loan Progress Schedule (R19) -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5">
             <div class="flex justify-between items-center pb-2 border-b border-slate-800">
               <span class="text-xs font-bold text-white">Wheels Express Progress</span>
@@ -863,7 +894,6 @@
             </div>
           </div>
 
-          <!-- Sensitivity Table (R18) -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div>
               <h3 class="text-xs font-bold text-white">Extra Payment Sensitivity</h3>
@@ -888,7 +918,7 @@
       `;
     }
 
-    // --- SCREEN S7 & S8: PAYDAY WATERFALL & BILLS ---
+    // --- SCREEN S7 & S8: PAYDAY WATERFALL ---
     function renderPayday() {
       const nextPayday = ClearTrackEngine.getNextPayday(state.today, state.settings.usualPayday);
       const R6 = ClearTrackEngine.getTotalAvailable(state);
@@ -907,7 +937,6 @@
             <p class="text-xs font-semibold text-slate-900 mt-1">Recommended Maximum Safe Extra Payment</p>
           </div>
 
-          <!-- Allocation Waterfall (R5–R10) -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <h3 class="text-xs font-bold text-white pb-2 border-b border-slate-800">Payday Priority Waterfall</h3>
             <div class="space-y-2 text-xs">
@@ -942,7 +971,6 @@
             </div>
           </div>
 
-          <!-- Bills Manager (S8) -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div class="flex justify-between items-center">
               <h3 class="text-xs font-bold text-white">One-Off Bills Due Before Payday</h3>
@@ -973,7 +1001,7 @@
       render();
     }
 
-    // --- SCREEN S3: TRANSACTIONS & CSV STATEMENT IMPORT TRIGGER ---
+    // --- SCREEN S3: TRANSACTIONS & CSV ---
     function renderTransactions() {
       return `
         <div class="space-y-3">
@@ -1020,7 +1048,7 @@
       `;
     }
 
-    // --- SCREEN: AUTOMATED VERIFICATION SUITE (T1–T27) ---
+    // --- SCREEN: AUDIT TESTS (T1–T27) ---
     function renderTests() {
       const tests = [
         { id: "T1", rule: "R1", name: "Next Payday", expected: "2026-11-27", actual: ClearTrackEngine.getNextPayday("2026-10-31", 28) },
@@ -1095,7 +1123,8 @@
       document.getElementById("qa-date").value = state.today;
 
       const catSelect = document.getElementById("qa-category");
-      catSelect.innerHTML = state.categories.map(c => `
+      // Populate ONLY expense/debt categories in Quick Add
+      catSelect.innerHTML = state.categories.filter(c => c.name !== "Net Pay").map(c => `
         <option value="${c.name}">${c.name} (${c.type})</option>
       `).join('');
       document.getElementById("qa-amount").focus();
@@ -1106,10 +1135,9 @@
     }
 
     function autoCategorize(text) {
-      const lower = text.toLowerCase();
-      const match = state.merchantRules.find(r => lower.includes(r.keyword.toLowerCase()));
-      if (match) {
-        document.getElementById("qa-category").value = match.category;
+      const matchCat = findCategoryForMerchant(text);
+      if (matchCat) {
+        document.getElementById("qa-category").value = matchCat;
       }
     }
 
@@ -1143,7 +1171,7 @@
       render();
     }
 
-    // --- CSV IMPORTER ENGINE (R21) ---
+    // --- CSV IMPORTER CONTROLLER (R21) ---
     let parsedCsvRows = [];
 
     function openCsvModal() {
@@ -1185,7 +1213,6 @@
       parsedCsvRows = [];
 
       lines.forEach((line, index) => {
-        // Skip header if line contains words like date or description
         if (index === 0 && line.toLowerCase().includes("date") && line.toLowerCase().includes("description")) return;
 
         const parts = line.split(",").map(p => p.trim().replace(/^["']|["']$/g, ""));
@@ -1195,17 +1222,7 @@
           const amt = Math.abs(parseFloat(parts[2].replace(/[^0-9.-]/g, "")));
           const method = parts[3] || "Debit/Cash";
 
-          // Match category from rules
-          let category = "Flexible";
-          const lower = desc.toLowerCase();
-          const match = state.merchantRules.find(r => lower.includes(r.keyword.toLowerCase()));
-          if (match) category = match.category;
-          else {
-            // Default based on generic keywords
-            if (lower.includes("supermarket") || lower.includes("mart")) category = "Groceries";
-            else if (lower.includes("gas") || lower.includes("petro")) category = "Fuel / Transportation";
-            else category = "Flexible";
-          }
+          const category = findCategoryForMerchant(desc);
 
           if (!isNaN(amt)) {
             parsedCsvRows.push({ date, description: desc, amount: amt, paymentMethod: method, category });
@@ -1213,9 +1230,10 @@
         }
       });
 
-      if (!parsedCsvRows.length) return alert("Could not parse any valid transaction rows. Check format.");
+      if (!parsedCsvRows.length) return alert("Could not parse any valid transaction rows.");
 
-      // Render Preview
+      const expenseCategories = state.categories.filter(c => c.name !== "Net Pay");
+
       const listContainer = document.getElementById("csv-preview-list");
       listContainer.innerHTML = parsedCsvRows.map((r, i) => `
         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5 text-xs">
@@ -1226,7 +1244,7 @@
           <div class="grid grid-cols-2 gap-2 text-[10px]">
             <span class="text-slate-400">${r.date} • ${r.paymentMethod}</span>
             <select onchange="updateCsvRowCategory(${i}, this.value)" class="bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 text-[10px]">
-              ${state.categories.map(c => `
+              ${expenseCategories.map(c => `
                 <option value="${c.name}" ${c.name === r.category ? 'selected' : ''}>${c.name}</option>
               `).join('')}
             </select>
@@ -1262,7 +1280,7 @@
       saveState();
       closeCsvModal();
       render();
-      alert(`Successfully imported ${parsedCsvRows.length} transactions! Live Cash, Balances, and Monthly Plan have updated.`);
+      alert(`Imported ${parsedCsvRows.length} transactions! Live cash, balances, and monthly plan are updated.`);
     }
 
     // Initialize App
