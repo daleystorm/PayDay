@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>ClearTrack — Debt Payoff & Money Control</title>
+
+  <!-- PWA & Mobile Web App Manifest Links -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons CDN -->
@@ -187,6 +197,15 @@
 
   <!-- APPLICATION ENGINE JAVASCRIPT -->
   <script>
+    // --- 0. REGISTER PWA SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker Registered!', reg))
+          .catch(err => console.log('SW registration error:', err));
+      });
+    }
+
     // --- 1. DEFAULT DATASET (Snapshot 31 Oct 2026) ---
     const INITIAL_STATE = {
       today: "2026-10-31",
@@ -319,7 +338,6 @@
     // --- State Storage & Smart Migration ---
     let state = JSON.parse(localStorage.getItem("cleartrack_data")) || INITIAL_STATE;
     
-    // Automatically merge any missing default merchant rules into existing state
     if (state.merchantRules) {
       INITIAL_STATE.merchantRules.forEach(rule => {
         const cleanK = rule.keyword.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -342,12 +360,10 @@
       }
     }
 
-    // --- SMART MERCHANT CATEGORIZER (R21) ---
     function findCategoryForMerchant(desc) {
       if (!desc) return "Groceries";
       const cleanDesc = desc.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-      // 1. Exact or Substring match against merchant rules
       for (const rule of state.merchantRules) {
         const cleanK = rule.keyword.toLowerCase().replace(/[^a-z0-9]/g, "");
         if (cleanK && cleanDesc.includes(cleanK)) {
@@ -355,13 +371,11 @@
         }
       }
 
-      // 2. Intelligent Keyword Fallbacks
       if (cleanDesc.includes("supermarket") || cleanDesc.includes("grocer") || cleanDesc.includes("food")) return "Groceries";
       if (cleanDesc.includes("gas") || cleanDesc.includes("fuel") || cleanDesc.includes("toll") || cleanDesc.includes("petro")) return "Fuel / Transportation";
       if (cleanDesc.includes("pharmacy") || cleanDesc.includes("health") || cleanDesc.includes("dr") || cleanDesc.includes("hospital")) return "Medical";
       if (cleanDesc.includes("burger") || cleanDesc.includes("pizza") || cleanDesc.includes("cafe") || cleanDesc.includes("rest") || cleanDesc.includes("food")) return "Eating Out / Takeout";
 
-      // 3. Fallback to valid everyday expense (NEVER "Net Pay")
       return "Groceries";
     }
 
@@ -1123,7 +1137,6 @@
       document.getElementById("qa-date").value = state.today;
 
       const catSelect = document.getElementById("qa-category");
-      // Populate ONLY expense/debt categories in Quick Add
       catSelect.innerHTML = state.categories.filter(c => c.name !== "Net Pay").map(c => `
         <option value="${c.name}">${c.name} (${c.type})</option>
       `).join('');
